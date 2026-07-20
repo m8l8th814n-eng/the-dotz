@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# QEMU runner for PCI GPU passthrough.
+# Defaults match this machine's AMD iGPU + HDMI/DP audio:
+#   03:00.0 VGA:   AMD/ATI Mendocino [Radeon 610M]
+#   03:00.1 Audio: AMD/ATI Radeon HD Audio
+
+VM_NAME="${VM_NAME:-gpu-vm}"
+MEMORY="${MEMORY:-8G}"
+CPUS="${CPUS:-4}"
+DISK="${DISK:-$HOME/winboat/data.img}"
+DISK_FORMAT="${DISK_FORMAT:-raw}"
+ISO="${ISO:-}"
+GPU_DEVICES="${GPU_DEVICES:-0000:03:00.0 0000:03:00.1}"
+NET="${NET:-user}"
+SPICE_PORT="${SPICE_PORT:-5930}"
+BIND_VFIO="${BIND_VFIO:-0}"
+DRY_RUN="${DRY_RUN:-0}"
+
+OVMF_CODE_CANDIDATES=(
+  /usr/share/edk2-ovmf/x64/OVMF_CODE.4m.fd
+  /usr/share/OVMF/OVMF_CODE.4m.fd
+  /usr/share/edk2/x64/OVMF_CODE.4m.fd
+)
+OVMF_VARS_TEMPLATE_CANDIDATES=(
+  /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd
+  /usr/share/OVMF/OVMF_VARS.4m.fd
+  /usr/share/edk2/x64/OVMF_VARS.4m.fd
+)
+
+die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+pick_first_existing() {
+  local path
+  for path in "$@"; do
+    [[ -r "$path" ]] && {
+      printf '%s\n' "$path"
+      return 0
+    }
+  done
+  return 1
+}
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "saknar kommando: $1"
+}
+
+run_root() {
+  if [[ "${EUID}" -eq 0 ]]; then
+    "$@"
+  elif command -v doas >/dev/null 2>&1; then
+    doas "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  else
+    die "behöver root för VFIO-bindning, men hittar varken doas eller sudo"
+  fi
+}
+
+usage() {
+  cat <<EOF
+Usage:
+  VM_NAME=win DISK=/path/disk.qcow2 ISO=/path/install.iso $0
+
+Vanliga env-varar:
+  DISK=...          Diskimage. Default: $DISK
+  DISK_FORMAT=raw   Diskformat, t.ex. raw eller qcow2.
+  ISO=...           Valfri boot/install-ISO.
+  GPU_DEVICES=...   PCI-adresser. Default: "$GPU_DEVICES"
+  MEMORY=8G         RAM till VM.
+  CPUS=4            vCPU antal.
+  NET=user|tap      Default: user.
+  BIND_VFIO=1       Bind GPU_DEVICES till vfio-pci innan start.
+  DRY_RUN=1         Visa QEMU-kommandot utan att starta.
+
+OBS:
+  Om detta är din enda GPU kan värdens bild försvinna när du binder den till vfio-pci.
+  Kör helst från TTY/SSH och se till att IOMMU är aktivt i kernel-parametrarna.
+EOF
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+need_cmd qemu-system-x86_64
+
+if [[ ! -e /dev/kvm ]]; then
+  if [[ "$DRY_RUN" == "1" ]]; then
+    printf 'warning: /dev/kvm finns inte. Aktivera virtualisering i BIOS/UEFI och ladda kvm-amd innan riktig start.\n' >&2
+  else
+    die "/dev/kvm finns inte. Aktivera virtualisering i BIOS/UEFI och ladda kvm-amd."
+  fi
+fi
+[[ -r "$DISK" ]] || die "hittar inte DISK: $DISK"
+[[ -z "$ISO" || -r "$ISO" ]] || die "hittar inte ISO: $ISO"
+
+OVMF_CODE="$(pick_first_existing "${OVMF_CODE_CANDIDATES[@]}")" || die "hittar inte OVMF_CODE"
+OVMF_VARS_TEMPLATE="$(pick_first_existing "${OVMF_VARS_TEMPLATE_CANDIDATES[@]}")" || die "hittar inte OVMF_VARS"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/qemu/$VM_NAME"
+OVMF_VARS="$STATE_DIR/OVMF_VARS.fd"
+mkdir -p "$STATE_DIR"
+[[ -e "$OVMF_VARS" ]] || cp "$OVMF_VARS_TEMPLATE" "$OVMF_VARS"
+
+if [[ "$BIND_VFIO" == "1" ]]; then
+  run_root modprobe vfio-pci
+  for dev in $GPU_DEVICES; do
+    sysdev="/sys/bus/pci/devices/$dev"
+    [[ -e "$sysdev" ]] || die "PCI-enhet saknas: $dev"
+    vendor="$(<"$sysdev/vendor")"
+    device="$(<"$sysdev/device")"
+    current_driver=""
+    [[ -L "$sysdev/driver" ]] && current_driver="$(basename "$(readlink "$sysdev/driver")")"
+
+    if [[ "$current_driver" != "vfio-pci" ]]; then
+      printf 'Binding %s (%s:%s) from %s to vfio-pci\n' "$dev" "$vendor" "$device" "${current_driver:-none}" >&2
+      printf '%s %s\n' "$vendor" "$device" | run_root tee /sys/bus/pci/drivers/vfio-pci/new_id >/dev/null || true
+      [[ -n "$current_driver" ]] && printf '%s\n' "$dev" | run_root tee "$sysdev/driver/unbind" >/dev/null
+      printf '%s\n' "$dev" | run_root tee /sys/bus/pci/drivers/vfio-pci/bind >/dev/null
+    fi
+  done
+fi
+
+QEMU_ARGS=(
+  -name "$VM_NAME"
+  -enable-kvm
+  -machine q35,accel=kvm,kernel_irqchip=on
+  -cpu host,kvm=on
+  -smp "$CPUS"
+  -m "$MEMORY"
+  -overcommit mem-lock=on
+  -rtc base=localtime,clock=host
+  -boot menu=on
+  -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE"
+  -drive if=pflash,format=raw,file="$OVMF_VARS"
+  -device pcie-root-port,id=pcie.1,chassis=1,slot=1
+  -device pcie-root-port,id=pcie.2,chassis=2,slot=2
+  -drive file="$DISK",if=none,id=system,format="$DISK_FORMAT",cache=none,aio=native,discard=unmap
+  -device virtio-blk-pci,drive=system
+  -device virtio-balloon-pci
+  -object rng-random,id=rng0,filename=/dev/urandom
+  -device virtio-rng-pci,rng=rng0
+  -device qemu-xhci,id=xhci
+  -device usb-tablet
+  -display none
+  -vga none
+  -serial mon:stdio
+  -spice "port=$SPICE_PORT,disable-ticketing=on"
+  -device virtio-serial-pci
+  -chardev "spicevmc,id=vdagent,name=vdagent"
+  -device "virtserialport,chardev=vdagent,name=com.redhat.spice.0"
+)
+
+if [[ -n "$ISO" ]]; then
+  QEMU_ARGS+=(
+    -drive file="$ISO",if=none,id=cdrom,media=cdrom,readonly=on
+    -device ide-cd,drive=cdrom
+  )
+fi
+
+case "$NET" in
+  user)
+    QEMU_ARGS+=(
+      -nic user,model=virtio-net-pci
+    )
+    ;;
+  tap)
+    QEMU_ARGS+=(
+      -netdev tap,id=net0,ifname=tap0,script=no,downscript=no
+      -device virtio-net-pci,netdev=net0
+    )
+    ;;
+  none)
+    ;;
+  *)
+    die "okänt NET=$NET, använd user, tap eller none"
+    ;;
+esac
+
+slot=1
+for dev in $GPU_DEVICES; do
+  bus="pcie.$slot"
+  device_arg="vfio-pci,host=$dev,bus=$bus"
+  [[ "$dev" == *".0" ]] && device_arg+=",x-vga=on"
+  QEMU_ARGS+=(-device "$device_arg")
+  slot=$((slot + 1))
+done
+
+printf 'SPICE: spice://127.0.0.1:%s\n' "$SPICE_PORT" >&2
+if [[ "$DRY_RUN" == "1" ]]; then
+  printf 'qemu-system-x86_64'
+  printf ' %q' "${QEMU_ARGS[@]}"
+  printf '\n'
+  exit 0
+fi
+
+exec qemu-system-x86_64 "${QEMU_ARGS[@]}"

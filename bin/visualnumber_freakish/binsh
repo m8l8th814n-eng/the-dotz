@@ -1,0 +1,16 @@
+#!/bin/sh
+# Ramp: sätt green från 1 till 82 i ett svep.
+# Avbryt med Ctrl-C; sätt sedan tillbaka en fast färg.
+
+cleanup() {
+    freakctl set green 81
+    exit 0
+}
+trap cleanup INT TERM
+
+i=4
+while [ "$i" -le 80 ]; do
+    freakctl set green "$i" >/dev/null
+    i=$((i + 1))
+	sleep 0.01
+done

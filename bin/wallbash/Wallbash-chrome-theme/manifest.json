@@ -1,0 +1,26 @@
+    {
+      "manifest_version": 3,
+      "version": "1.0",
+      "name": "Wallbash Theme",
+      "theme": {
+        "images": {
+          "theme_ntp_background" : "images/theme_ntp_background_norepeat.png"
+        },
+        "colors": {
+          "frame": [27, 26, 41],
+          "frame_inactive": [27, 26, 41],
+          "toolbar": [44, 41, 82],
+          "ntp_text": [255, 255, 255],
+          "ntp_link": [44, 41, 82],
+          "ntp_section": [39, 46, 60],
+          "button_background": [255, 255, 255],
+          "toolbar_button_icon": [255, 255, 255],
+          "toolbar_text": [255, 255, 255],
+          "omnibox_background": [27, 26, 41],
+          "omnibox_text": [255, 255, 255]
+        },
+        "properties": {
+          "ntp_background_alignment": "bottom"
+        }
+      }
+    }

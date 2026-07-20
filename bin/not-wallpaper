@@ -1,0 +1,1 @@
+kitty --start-as fullscreen -e jp2a --colors -z ./backgrounds/ss.png|tte --existing-color-handling always --frame-rate 120 --random-effect

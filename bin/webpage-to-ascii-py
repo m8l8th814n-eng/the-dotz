@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""
+Take a screenshot of a webpage and convert it to ASCII art using chafa.
+
+Usage:
+    webpage-to-ascii-py <URL> [width] [height]
+"""
+
+import subprocess
+import sys
+import os
+import tempfile
+from pathlib import Path
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(1)
+
+    url = sys.argv[1]
+    width = sys.argv[2] if len(sys.argv) > 2 else "80"
+    height = sys.argv[3] if len(sys.argv) > 3 else "24"
+
+    # Check for required tools
+    for tool in ["firefox", "chafa"]:
+        if not shutil.which(tool):
+            print(f"Error: {tool} not found in PATH.", file=sys.stderr)
+            sys.exit(1)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        screenshot_path = Path(tmpdir) / "screenshot.png"
+
+        # Take screenshot with Firefox in headless mode
+        firefox_cmd = [
+            "firefox",
+            "--headless",
+            "--screenshot", str(screenshot_path),
+            "--window-size=1280,720",
+            url
+        ]
+        try:
+            subprocess.run(firefox_cmd, check=True, capture_output=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to take screenshot: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        # Convert to ASCII with chafa
+        chafa_cmd = [
+            "chafa",
+            "-c", "full",
+            "-s", f"{width}x{height}",
+            str(screenshot_path)
+        ]
+        try:
+            result = subprocess.run(chafa_cmd, check=True, capture_output=True, text=True)
+            print(result.stdout)
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to convert image: {e}", file=sys.stderr)
+            sys.exit(1)
+
+if __name__ == "__main__":
+    import shutil
+    main()

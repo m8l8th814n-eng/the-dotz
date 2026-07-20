@@ -1,0 +1,52 @@
+
+* {
+    wallbash-pry1:            #1B1A29E6;
+    wallbash-txt1:            #FFFFFFE6;
+    wallbash-1xa1:            #2C2952E6;
+    wallbash-1xa2:            #3D3A6BE6;
+    wallbash-1xa3:            #4E4B7DE6;
+    wallbash-1xa4:            #5B578FE6;
+    wallbash-1xa5:            #6965A3E6;
+    wallbash-1xa6:            #7F7AC2E6;
+    wallbash-1xa7:            #9F9AE6E6;
+    wallbash-1xa8:            #AFAAF0E6;
+    wallbash-1xa9:            #CFCCFFE6;
+
+    wallbash-pry2:            #272E3CB3;
+    wallbash-txt2:            #FFFFFFE6;
+    wallbash-2xa1:            #293652E6;
+    wallbash-2xa2:            #3A4A6BE6;
+    wallbash-2xa3:            #4B5C7DE6;
+    wallbash-2xa4:            #576A8FE6;
+    wallbash-2xa5:            #657AA3E6;
+    wallbash-2xa6:            #7A92C2E6;
+    wallbash-2xa7:            #9AB3E6E6;
+    wallbash-2xa8:            #AAC1F0E6;
+    wallbash-2xa9:            #CCDDFFE6;
+
+    wallbash-pry3:            #2D4E5BB3;
+    wallbash-txt3:            #FFFFFFE6;
+    wallbash-3xa1:            #294652E6;
+    wallbash-3xa2:            #3A5D6BE6;
+    wallbash-3xa3:            #4B6F7DE6;
+    wallbash-3xa4:            #577F8FE6;
+    wallbash-3xa5:            #6592A3E6;
+    wallbash-3xa6:            #7AAEC2E6;
+    wallbash-3xa7:            #9AD0E6E6;
+    wallbash-3xa8:            #AADCF0E6;
+    wallbash-3xa9:            #CCF1FFE6;
+
+    wallbash-pry4:            #974C4EB3;
+    wallbash-txt4:            #FFFFFFE6;
+    wallbash-4xa1:            #52292AE6;
+    wallbash-4xa2:            #6B3A3BE6;
+    wallbash-4xa3:            #7D4B4CE6;
+    wallbash-4xa4:            #8F5759E6;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+    wallbash-4xa5:            #A36567E6;
+    wallbash-4xa6:            #C27A7CE6;
+    wallbash-4xa7:            #E69A9CE6;
+    wallbash-4xa8:            #F0AAACE6;
+    wallbash-4xa9:            #FFCCCDE6;
+
+
+}

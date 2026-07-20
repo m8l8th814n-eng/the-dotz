@@ -1,0 +1,18 @@
+#!/bin/sh
+# Fullscreen wrapper for sonic-tte. Bind it however you like.
+
+if [ "$1" != "--inner" ]; then
+    exec foot --app-id=sonic-tte-fs --fullscreen -- "$0" --inner
+fi
+
+cleanup() {
+    printf '\033[?25h'
+    exit 0
+}
+trap cleanup INT TERM HUP QUIT EXIT
+
+printf '\033]11;rgb:00/00/00\007'
+printf '\033[?25l'
+clear
+
+exec sonic-tte

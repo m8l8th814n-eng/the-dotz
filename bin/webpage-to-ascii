@@ -1,0 +1,27 @@
+#!/bin/bash
+# Simple wrapper: takes a URL, takes a screenshot with Firefox in headless mode,
+# then converts it to ASCII art with chafa.
+
+set -euo pipefail
+
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <URL> [width] [height]"
+  exit 1
+fi
+
+URL="$1"
+WIDTH="${2:-80}"
+HEIGHT="${3:-24}"
+
+# Create a temporary directory
+TMPDIR=$(mktemp -d)
+trap 'rm -rf "$TMPDIR"' EXIT
+
+SCREENSHOT="$TMPDIR/screenshot.png"
+
+# Take a screenshot of the page with Firefox in headless mode
+firefox --headless --screenshot "$SCREENSHOT" "$URL" \
+  --window-size=1280,720 >/dev/null 2>&1
+
+# Convert the screenshot to ANSI art with chafa, fitting to the specified width and height
+chafa -c full -s "${WIDTH}x${HEIGHT}" "$SCREENSHOT"

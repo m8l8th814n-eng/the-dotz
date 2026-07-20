@@ -1,0 +1,1 @@
+export PATH="/home/simon/perl5/bin:/home/simon/.local/bin:/home/simon/.opencode/bin:/home/simon/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/jvm/default/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/opt/rocm/bin:/usr/lib/rustup/bin:/home/simon/go/bin:/home/simon/.lmstudio/bin"

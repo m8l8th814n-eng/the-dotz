@@ -1,0 +1,2 @@
+hyprshade off
+
